@@ -13,16 +13,21 @@ from .fairness import calculate_fairness_metrics
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-class DummyEstimator:
+from sklearn.base import BaseEstimator, ClassifierMixin
+
+class DummyEstimator(BaseEstimator, ClassifierMixin):
     """
     A wrapper to allow Fairlearn's ThresholdOptimizer to accept pre-computed probabilities 
     from an already trained pipeline without retraining.
     """
     def __init__(self, y_prob):
         self.y_prob = y_prob
+        # Add required attributes so scikit-learn recognizes it as a fitted model
+        self.classes_ = np.array([0, 1]) 
         
     def fit(self, X, y):
-        pass
+        self.is_fitted_ = True
+        return self
         
     def predict(self, X):
         return (self.y_prob >= 0.5).astype(int)
@@ -30,7 +35,7 @@ class DummyEstimator:
     def predict_proba(self, X):
         # ThresholdOptimizer expects shape (n_samples, 2)
         return np.vstack((1 - self.y_prob, self.y_prob)).T
-
+        
 def apply_threshold_mitigation(y_true, y_prob, sensitive_features, constraint='equalized_odds'):
     """
     Applies post-processing threshold adjustments to balance fairness metrics 
