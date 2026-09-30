@@ -1,38 +1,69 @@
+```text
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
 *.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Virtual environments
-.venv/
+# Virtual Environment
 venv/
 env/
+ENV/
+env.bak/
+venv.bak/
 
-# Generated data, models and artifacts (recreate with scripts/setup_demo.py)
-data/raw/*
-data/processed/*
-data/*.db
-data/*.sqlite
-models/*
-artifacts/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-!models/.gitkeep
-!artifacts/.gitkeep
-
-# IDE / OS
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
-
-# Environment
+# Environment Variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Docker / misc
-*.log
+# Node & Frontend
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+frontend/dist/
+frontend/build/
+.eslintcache
+
+# Project Data & Artifacts (Keep structure but ignore files)
+backend/data/raw/*
+!backend/data/raw/.gitkeep
+backend/data/processed/*
+!backend/data/processed/.gitkeep
+backend/artifacts/*
+!backend/artifacts/.gitkeep
+backend/models/*
+!backend/models/.gitkeep
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Pytest
+.pytest_cache/
 .coverage
 htmlcov/
