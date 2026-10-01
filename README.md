@@ -1,691 +1,227 @@
 <div align="center">
 
-# 💰 CashFlow-Lens
+# 🔍 CashFlow-Lens
 
-### Explainable & Evidence-Aware Credit Risk Analytics for MSMEs
+**Explainable, evidence-aware credit risk analytics for MSMEs**
 
-*From financial evidence to explainable risk — without turning lending into a black box.*
+*Predict → Explain → Forecast → Audit → Stress test → Human decision support*
 
-[![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#)  
-[![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](#)  
-[![ML](https://img.shields.io/badge/ML-LightGBM%20%7C%20Random%20Forest-FF6F00?style=for-the-badge&logo=scikit-learn&logoColor=white)](#)  
-[![Explainability](https://img.shields.io/badge/Explainability-SHAP-8A2BE2?style=for-the-badge)](#)  
-[![Fairness](https://img.shields.io/badge/Fairness-Fairlearn-00A86B?style=for-the-badge)](#)  
-[![Status](https://img.shields.io/badge/Status-Prototype-orange?style=for-the-badge)](#)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![LightGBM](https://img.shields.io/badge/LightGBM-SHAP-2ea44f)
+![Fairlearn](https://img.shields.io/badge/Fairlearn-audit-6f42c1)
+![React](https://img.shields.io/badge/React_18-Vite_+_Tailwind-14b8a6?logo=react&logoColor=white)
+![Data](https://img.shields.io/badge/data-100%25_synthetic-orange)
 
 </div>
 
 ---
 
-## ✨ What is CashFlow-Lens?
+## What this is
 
-CashFlow-Lens is a **modular credit risk analytics platform** designed for Micro, Small, and Medium Enterprises (MSMEs).
+CashFlow-Lens is a credit-risk decision-support dashboard for small-business (MSME) lending. It looks at a borrower's cash-flow behaviour, predicts a probability of default (PD), explains *why* using SHAP, projects the next 30/60/90 days of liquidity, audits the model for group fairness, and lets an underwriter run "what if sales drop 20%?" stress scenarios.
 
-It combines financial data processing, machine-learning-based credit-risk analysis, explainability, evidence-oriented checks, forecasting, fairness analysis, and financial stress testing into a single analytical workflow.
+It never approves or rejects a loan. It only produces guidance such as **Continue Monitoring**, **Additional Evidence Required** or **Manual Review Recommended**, and a human makes the call.
 
-The platform is designed to provide an underwriter with **more context than a single credit score**.
-
-> **PREDICT → VERIFY → TRACE → EXPLAIN → FORECAST → AUDIT → STRESS TEST → HUMAN DECISION SUPPORT**
-
-> ⚠️ **Important:** CashFlow-Lens does **not** autonomously approve or reject loans. It is designed as decision support for human underwriters.
+> ⚠️ **All data is synthetic.** There is no connection to any bank, UPI, GST or government system. Risk thresholds are illustrative, not banking standards.
 
 ---
 
-# 🎯 Why CashFlow-Lens?
+## Architecture
 
-MSME financial information can be fragmented across multiple financial records.
+```mermaid
+flowchart LR
+    subgraph FE["Frontend · React + Vite + Tailwind"]
+        UI["Dashboard · Risk · Cash Flow<br/>Evidence · Provenance<br/>Fairness · Stress Test"]
+        SVC["services/api.ts<br/>(falls back to mockData.ts)"]
+        UI --> SVC
+    end
 
-CashFlow-Lens therefore considers relationships between:
+    subgraph BE["Backend · FastAPI (api/main.py)"]
+        EP["/health /borrowers /risk<br/>/forecast /fairness<br/>/stress-test /evidence /provenance"]
+    end
 
-```text
-        Cash Flow
-            │
-      ┌─────┴─────┐
-      │           │
-   Invoices      GST
-      │           │
-      └─────┬─────┘
-            │
-     Bank Settlement
-            │
-       Loan History
-            │
-            ▼
-      Credit Risk Context
+    subgraph PIPE["Demo pipeline · scripts/setup_demo.py"]
+        TR["train.py<br/>LogReg · RandomForest · LightGBM"]
+        EV["evaluate.py<br/>AUC · PR-AUC · KS · Brier"]
+        EX["explain.py<br/>SHAP global + local"]
+        FA["fairness.py + mitigation.py<br/>Fairlearn audit + ThresholdOptimizer"]
+        FC["forecasting.py<br/>EMA 30/60/90-day"]
+        ST["stress_test.py<br/>shock → re-score PD"]
+        TR --> EV --> EX
+        TR --> FA
+    end
+
+    ART[("backend/artifacts<br/>*.joblib · *.json · *.csv")]
+
+    subgraph STANDALONE["Built as modules, not yet wired into the demo"]
+        GEN["data_generator.py<br/>600 borrowers · 24 months"]
+        DBM["database.py<br/>SQLite · 12 tables"]
+        PRE["preprocessing.py"]
+        FEAT["features.py<br/>24 cash-flow features"]
+        PROV["provenance.py<br/>invoice → bank / GST / vendor / inventory"]
+        GEN --> DBM
+        GEN --> FEAT
+        PRE --- FEAT
+    end
+
+    SVC -- "HTTP / JSON" --> EP
+    PIPE --> ART
+    ART --> EP
+    EP --> ST
 ```
 
-Instead of asking only:
-
-> **What is the risk?**
-
-CashFlow-Lens also attempts to provide:
-
-> **Why does the model see this risk?**
-
-> **What evidence supports the financial information?**
-
-> **How could the cash position evolve?**
-
-> **How could risk change under financial stress?**
-
-> **Does model behaviour differ across configured groups?**
+Solid boxes in the middle are what `setup_demo.py` and the API actually run today. The bottom box is code that is written and importable but not connected to that path yet. See [Implementation status](#implementation-status) for the honest breakdown.
 
 ---
 
-# ✨ Key Features
+## Modules
 
-## 1. 🧠 Credit Risk Modeling & Explainability
+### Backend (`backend/src`)
 
-The project implements multiple machine-learning approaches:
-
-- Logistic Regression
-- Random Forest
-- LightGBM
-
-The modeling pipeline supports:
-
-- Borrower-level risk prediction
-- Probability-based risk estimates
-- Global feature analysis
-- Local explanations
-- SHAP-based explainability
-- Model comparison
-
-### Evaluation Metrics
-
-The project evaluates models using multiple metrics:
-
-```text
-ROC-AUC
-PR-AUC
-Precision
-Recall
-F1
-Brier Score
-KS Statistic
-Confusion Matrix
-```
-
-This allows the system to look beyond simple classification accuracy.
-
----
-
-# 2. 🔍 Evidence Integrity
-
-CashFlow-Lens includes an evidence-oriented layer for checking consistency between financial records.
-
-Current evidence relationships represented by the project include:
-
-```text
-Invoice ↔ GST
-Invoice ↔ Bank Settlement
-Purchase ↔ Inventory
-Vendor ↔ Transaction
-Revenue ↔ Cash Settlement
-```
-
-The project also contains synthetic scenarios for inconsistencies such as:
-
-- GST/revenue mismatch
-- Unsettled invoices
-- Duplicate invoices
-- Vendor identity mismatch
-- Inventory inconsistencies
-- Unusual transaction/inflow patterns
-
-The philosophy is:
-
-> **An inconsistency is a signal for investigation — not an automatic declaration of fraud.**
-
-### Current Implementation Status
-
-The evidence layer is currently at **prototype/integration stage**.
-
-The project contains the underlying financial relationships and scenario generation, while some API-level evidence responses are still demonstration-oriented rather than fully dynamic borrower-specific reconciliation.
-
----
-
-# 3. 🔗 Data Provenance
-
-CashFlow-Lens includes provenance-oriented structures for tracing financial information toward its underlying records.
-
-Conceptually:
-
-```text
-Financial Claim
-      │
-      ▼
- Source Record
-      │
-      ▼
-Transaction / Invoice
-      │
-      ▼
-Supporting Evidence
-```
-
-This provides an evidence-oriented view of where important financial information originates.
-
----
-
-# 4. 📈 Cash-Flow Forecasting
-
-The forecasting layer projects future cash-flow conditions over:
-
-- **30 days**
-- **60 days**
-- **90 days**
-
-The current approach uses **exponentially weighted historical averages**.
-
-The forecasting output includes indicators such as:
-
-```text
-Expected Inflow
-Expected Outflow
-Net Cash Flow
-Projected Balance
-Liquidity Pressure
-Debt-Service Capacity Indicators
-```
-
-These projections are intended as analytical estimates rather than guarantees.
-
----
-
-# 5. ⚖️ Fairness Analysis
-
-CashFlow-Lens includes fairness analysis using **Fairlearn**.
-
-Current analysis includes:
-
-- Equalized Odds
-- Disparate Impact
-- Group-level performance comparison
-- Threshold-based mitigation experiments
-
-The purpose is to make model behaviour more auditable across configured groups instead of evaluating the model only through overall predictive performance.
-
----
-
-# 6. 🌪️ Financial Stress Testing
-
-The project includes configurable financial stress scenarios.
-
-Examples:
-
-```text
-📉 Sales Drop
-📈 Input Cost Increase
-📈 Interest Rate Increase
-📈 Operating Expense Increase
-```
-
-The workflow is:
-
-```text
-Baseline
-   │
-   ▼
-Apply Financial Shock
-   │
-   ▼
-Recalculate Features
-   │
-   ▼
-Re-evaluate Risk
-   │
-   ▼
-Compare with Baseline
-```
-
-This allows analysis of potential **risk migration and financial sensitivity** under adverse conditions.
-
----
-
-# 7. 👤 Human Decision Support
-
-CashFlow-Lens is designed to provide contextual signals rather than autonomous lending decisions.
-
-Example signals include:
-
-```text
-⚠ Manual Review Recommended
-⚠ Additional Evidence Required
-✓ Continue Monitoring
-⚠ Evidence Mismatch Detected
-```
-
-The intended workflow is:
-
-```text
-System Analysis
-      ↓
-Evidence Review
-      ↓
-Risk Interpretation
-      ↓
-Human Underwriter
-      ↓
-Final Decision
-```
-
-> 🤝 **The system supports the decision. It does not make the lending decision.**
-
----
-
-# 🏗️ System Architecture
-
-```text
-================================================================================
-🏢 1. FINANCIAL DATA LAYER
-================================================================================
-
-                Synthetic MSME Financial Data
-
-     [ Cash Flow ] [ Invoices ] [ Payments ] [ GST ] [ Loans ]
-             │          │            │          │        │
-             └──────────┴────────────┴──────────┴────────┘
-                                │
-                                ▼
-
-================================================================================
-🧹 2. DATA & FEATURE ENGINEERING
-================================================================================
-
-        Validation → Preprocessing → Feature Engineering
-                                │
-                                ▼
-
-================================================================================
-🤖 3. CREDIT RISK ENGINE
-================================================================================
-
-       ┌────────────────┐
-       │ Logistic       │
-       │ Regression     │
-       └────────────────┘
-
-       ┌────────────────┐
-       │ Random Forest  │
-       └────────────────┘
-
-       ┌────────────────┐
-       │ LightGBM       │
-       └────────────────┘
-
-                 │
-                 ▼
-          Risk Assessment
-                 │
-                 ▼
-
-================================================================================
-🧠 4. INTELLIGENCE LAYERS
-================================================================================
-
- ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
- │ 🔍 Evidence      │ │ 🔗 Provenance    │ │ 🧠 Explainability│
- │    Integrity     │ │                  │ │                  │
- │ Cross-source     │ │ Claim → Source   │ │ SHAP             │
- │ consistency      │ │ → Record         │ │ Local reasons    │
- └──────────────────┘ └──────────────────┘ └──────────────────┘
-
- ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
- │ 📈 Forecasting   │ │ ⚖️ Fairness      │ │ 🌪️ Stress Test   │
- │                  │ │                  │ │                  │
- │ 30/60/90 day     │ │ Equalized Odds   │ │ Sales shock      │
- │ projections      │ │ Disparate Impact │ │ Cost shock       │
- └──────────────────┘ └──────────────────┘ └──────────────────┘
-                 │
-                 ▼
-
-================================================================================
-🔌 5. APPLICATION & API LAYER
-================================================================================
-
-                         FastAPI
-
- [ Risk ] [ Borrower ] [ Cash Flow ] [ Evidence ]
- [ Provenance ] [ Fairness ] [ Stress Testing ]
-                 │
-                 ▼
-
-================================================================================
-🖥️ 6. PRESENTATION LAYER
-================================================================================
-
-                  React + Vite + Tailwind CSS
-
- [ Dashboard ] [ Borrower ] [ Risk Analytics ]
- [ Cash Flow ] [ Evidence ] [ Provenance ]
- [ Fairness ] [ Stress Testing ]
-                 │
-                 ▼
-
-================================================================================
-👤 HUMAN UNDERWRITER
-================================================================================
-
- Review → Investigate → Compare Evidence
-       → Assess Risk → Consider Scenarios
-       → Make Final Decision
-================================================================================
-```
-
----
-
-# 🔍 Layer-by-Layer Architecture
-
-| Layer | Responsibility |
+| Module | What it does |
 |---|---|
-| 🏢 **Financial Data** | Generates and provides structured MSME financial information for controlled analysis and demonstrations. |
-| 🧹 **Data & Features** | Validates, preprocesses, and transforms financial information into model-ready features. |
-| 🤖 **Credit Risk Engine** | Trains/evaluates multiple models and produces borrower-level risk estimates. |
-| 🔍 **Evidence Integrity** | Represents cross-source financial consistency checks and mismatch scenarios. |
-| 🔗 **Provenance** | Provides structures for tracing financial information toward supporting records. |
-| 🧠 **Explainability** | Uses SHAP to interpret model predictions. |
-| 📈 **Forecasting** | Produces 30/60/90-day cash-flow projections. |
-| ⚖️ **Fairness** | Evaluates model behaviour across configured groups. |
-| 🌪️ **Stress Testing** | Evaluates risk under configurable financial shocks. |
-| 🔌 **API** | Exposes analytical capabilities through FastAPI. |
-| 🖥️ **Frontend** | Presents analytical outputs through a React/Vite dashboard. |
-| 👤 **Human Decision Support** | Keeps final lending decisions with the human underwriter. |
+| `train.py` | Stratified 80/20 split, median-impute + scale numerics, one-hot categoricals, trains Logistic Regression, Random Forest and LightGBM (all class-balanced) |
+| `evaluate.py` | ROC-AUC, PR-AUC, precision, recall, F1, Brier score, KS statistic, confusion matrix → `evaluation_metrics.json` |
+| `explain.py` | SHAP `TreeExplainer`; global importance CSV; per-borrower signed contributions and plain-English reason codes (top 3 risk-increasing, top 3 risk-decreasing) |
+| `forecasting.py` | Rolls transactions into daily inflow/outflow, takes a 30-day EMA, projects 30/60/90-day inflow, outflow, net cash flow, balance, a DSCR proxy and a Low/Medium/High liquidity-pressure label |
+| `fairness.py` | Fairlearn `MetricFrame` per group (TPR, FPR, FNR, selection rate, precision, recall) plus equal-opportunity, equalized-odds, demographic-parity and predictive-equality differences. Manual fallback if Fairlearn is missing |
+| `mitigation.py` | Fairlearn `ThresholdOptimizer` (equalized odds) on the already-computed probabilities, then a baseline vs mitigated comparison report |
+| `stress_test.py` | Applies sales / input-cost / interest / opex shocks to a borrower's features, re-scores PD and reports the risk-segment migration |
+| `data_generator.py` | Synthetic longitudinal MSME data with 10 tables, 7 injectable inconsistency scenarios and a leakage-safe timeline (see below) |
+| `features.py` | 24 cash-flow features in 8 groups, built only from data before the application date |
+| `preprocessing.py` | Cleaning and validation, leakage assertion, borrower-level split, quantile clipper, sklearn preprocessor |
+| `database.py` | SQLAlchemy Core + pandas SQLite layer, 12 tables |
+| `provenance.py` | Builds evidence edges and a per-borrower provenance graph: Claimed Revenue → Invoice → Bank / GST record / Vendor / Inventory |
+| `config.py`, `utils.py` | YAML settings loader with built-in defaults, plus helpers (logging, seeding, JSON, date and similarity utilities) |
+
+### Synthetic data design
+
+- **Timeline:** 18-month observation window → application date → 6-month outcome window. Features only see the first window.
+- **Target:** `default_flag = 1` if the borrower misses 2+ consecutive EMIs of the loan taken at the application date. It is drawn from a noisy latent probability, not a formula of any visible feature.
+- **Borrowers:** 600 by default, Micro / Small / Medium, six sectors, five regions.
+- **Inconsistency scenarios (for demos and tests only, never model inputs):** unsettled invoices, GST revenue mismatch, duplicate invoices, vendor identity mismatch, inventory shortfall, pre-application inflow spike, round-trip transfers.
+
+### Feature groups (`features.py`)
+
+`cash_flow_level` · `volatility` · `trend` · `cost_structure` · `debt_service` · `concentration` · `activity` · `repayment_history`
+
+### Decision-support rules (`/risk`)
+
+| PD | Segment | Guidance |
+|---|---|---|
+| below 0.15 | Low Risk | Continue Monitoring |
+| 0.15 – 0.35 | Medium Risk | Continue Monitoring, or Additional Evidence Required if PD is above 0.25 |
+| 0.35 and above | High Risk | Manual Review Recommended |
 
 ---
 
-# 🧪 Synthetic Financial Data
+## API
 
-The current project operates using **synthetic MSME financial data**.
+| Method | Endpoint | Returns |
+|---|---|---|
+| GET | `/health` | Model and data load status |
+| GET | `/borrowers` | First 50 borrower IDs |
+| GET | `/borrowers/{id}` | Raw feature values for one borrower |
+| GET | `/risk?borrower_id=` | PD, risk segment, guidance, reason codes, top SHAP contributions |
+| GET | `/forecast?borrower_id=` | 30d / 60d / 90d forecast from a saved artifact |
+| GET | `/fairness` | Baseline vs mitigated fairness report |
+| POST | `/stress-test` | Baseline vs stressed PD and risk migration |
+| GET | `/evidence?borrower_id=` | Evidence-integrity checks (currently fixed sample output) |
+| GET | `/provenance?borrower_id=` | Revenue lineage trace (currently fixed sample output) |
 
-It does not require real:
-
-- Bank account information
-- UPI transaction data
-- GST records
-- Government financial records
-- Customer financial records
-
-The synthetic generator supports controlled scenarios such as:
-
-```text
-Unsettled invoices
-GST / revenue mismatches
-Duplicate invoices
-Vendor identity mismatches
-Inventory inconsistencies
-Unusual inflow patterns
-Transaction anomalies
-```
-
-This allows the analytical pipeline to be tested without exposing real financial information.
-
-> **Synthetic scenarios are for engineering validation and demonstration. They should not be interpreted as evidence about real-world fraud prevalence or real lending populations.**
+Interactive docs are at `http://localhost:8000/docs` once the server is running.
 
 ---
 
-# 📊 Model Evaluation
+## Frontend (`frontend/src`)
 
-The evaluation pipeline uses multiple complementary metrics:
+React 18 + TypeScript + Vite, Tailwind (teal brand palette, Inter font), Recharts for charts, lucide-react for icons, React Router for navigation.
 
-```text
-                 MODEL EVALUATION
-                       │
-          ┌────────────┼────────────┐
-          ▼            ▼            ▼
-     Predictive     Probability    Error
-     Performance     Quality      Analysis
-          │            │            │
-       ROC-AUC      Brier Score   Precision
-       PR-AUC                     Recall
-       KS                          F1
-                                  Confusion Matrix
-```
+| Route | Page | Shows |
+|---|---|---|
+| `/` | Dashboard | KPI cards, underwriter decision support, 90-day liquidity outlook |
+| `/risk` | Risk Analytics | PD, SHAP contribution chart, generated reason codes |
+| `/cashflow` | Cash Flow | 90-day projection chart and 30/60/90 outlook cards |
+| `/evidence` | Evidence Integrity | Document reconciliation checks and alerts |
+| `/provenance` | Provenance | Data lineage trace for revenue claims |
+| `/fairness` | Fairness Audit | Baseline vs mitigated disparities and TPR by group |
+| `/stress-test` | Stress Testing | Shock inputs, baseline vs stressed risk, impact summary |
+| `/profile` | Borrower Profile | Raw model-input features |
 
-This provides a broader view of model behaviour, particularly for credit-risk classification where class imbalance and probability quality can be important.
+`services/api.ts` calls the backend and quietly falls back to `services/mockData.ts` if a request fails, so the UI always renders. Set `VITE_DEMO_MODE=true` to force mock data, or `VITE_API_URL` to point at a different backend. The pages currently use a fixed borrower, `DEMO-001`.
 
 ---
 
-# 📁 Repository Structure
+## Getting started
 
-```text
-cashflow-lens/
-│
-├── backend/
-│   ├── api/
-│   │   └── main.py
-│   │
-│   ├── src/
-│   │   ├── model/
-│   │   ├── explainability/
-│   │   ├── evidence/
-│   │   ├── provenance/
-│   │   ├── forecasting/
-│   │   ├── fairness/
-│   │   └── stress_testing/
-│   │
-│   ├── scripts/
-│   ├── tests/
-│   ├── data/
-│   └── artifacts/
-│
-├── frontend/
-│   └── src/
-│       ├── components/
-│       ├── pages/
-│       └── services/
-│
-└── README.md
-```
+Run these from the **repo root** (the demo script and API use `backend/artifacts` relative paths).
 
----
-
-# 🛠️ Technology Stack
-
-### Backend
-
-- Python
-- FastAPI
-- Pandas
-- NumPy
-- Scikit-learn
-
-### Machine Learning
-
-- LightGBM
-- Random Forest
-- Logistic Regression
-- SHAP
-- Fairlearn
-
-### Frontend
-
-- React
-- Vite
-- Tailwind CSS
-
-### Testing
-
-- Pytest
-
----
-
-# 🚀 Getting Started
-
-## 1. Clone
+**1. Backend**
 
 ```bash
-git clone https://github.com/ManikandanPrabhu13/cashflow-lens.git
-cd cashflow-lens
+python -m venv venv && source venv/bin/activate      # Windows: venv\Scripts\activate
+pip install -r backend/requirements.txt
+
+python backend/scripts/setup_demo.py                  # trains models, writes artifacts
+uvicorn backend.api.main:app --reload --port 8000
 ```
 
-## 2. Backend
-
-```bash
-cd backend
-
-python -m venv venv
-```
-
-### Windows
-
-```bash
-venv\Scripts\activate
-```
-
-### Linux / macOS
-
-```bash
-source venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Generate demonstration data and artifacts:
-
-```bash
-python scripts/setup_demo.py
-```
-
-Start the API:
-
-```bash
-uvicorn api.main:app --reload
-```
-
----
-
-## 3. Frontend
-
-Open another terminal:
+**2. Frontend**
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev                                           # http://localhost:5173
 ```
 
-Open the local Vite development URL shown in the terminal.
+**3. Tests**
+
+```bash
+cd backend && pytest
+```
 
 ---
 
-# 🛡️ Responsible AI & Safety
-
-> **A credit prediction is not a lending decision.**
-
-CashFlow-Lens follows these principles:
-
-- 🔍 **Evidence before conclusions** — inconsistencies trigger investigation rather than automatic fraud labels.
-- 🧠 **Explainability over black boxes** — predictions can be accompanied by contributing factors.
-- 🤝 **Human oversight** — final lending decisions remain with human decision-makers.
-- 📊 **Multiple signals** — risk is examined through multiple financial indicators.
-- 🌪️ **Scenario awareness** — financial resilience can be examined under configurable stress.
-- ⚖️ **Model accountability** — predictive performance and group-level behaviour are evaluated.
-- 🔐 **Privacy-aware development** — the current prototype uses synthetic financial data.
-
----
-
-# 🧪 Testing
-
-The backend contains a **Pytest-based testing foundation** for validating components of the analytical system.
-
-The modular architecture allows data processing, analytical components, and API behaviour to be tested independently.
-
----
-
-# 🗺️ Current Development Status
-
-### ✅ Implemented / Present
-
-- [x] Synthetic MSME financial-data generation
-- [x] Financial feature engineering
-- [x] Logistic Regression
-- [x] Random Forest
-- [x] LightGBM
-- [x] Multi-metric model evaluation
-- [x] SHAP-based explainability
-- [x] Vendor-related financial data and mismatch scenarios
-- [x] Evidence-integrity framework structure
-- [x] Provenance-oriented structures
-- [x] 30 / 60 / 90-day cash-flow forecasting
-- [x] Fairness analysis with Fairlearn
-- [x] Threshold-based mitigation experiments
-- [x] Configurable stress-testing framework
-- [x] FastAPI backend
-- [x] React/Vite dashboard
-- [x] Backend testing foundation
-
-### 🚧 Integration Stage
-
-- [ ] Fully dynamic evidence reconciliation
-- [ ] Fully borrower-specific provenance responses
-- [ ] Complete API integration of every analytical module
-- [ ] Expanded frontend/backend integration testing
-- [ ] Improved demo reproducibility
-- [ ] Enhanced analytical visualizations
-
----
-
-# ⚠️ Current Limitations
-
-CashFlow-Lens is currently a **prototype / research-oriented analytical system**, not a production lending platform.
-
-- Demonstration data is synthetic.
-- Synthetic model performance does not establish real-world lending performance.
-- Forecasts are projections, not guarantees.
-- Fairness metrics depend on the selected population, labels, groups, and methodology.
-- Evidence mismatches require contextual investigation.
-- Some evidence/API responses remain demonstration-oriented rather than fully dynamic.
-- The system does not autonomously approve or reject loans.
-- Production deployment would require additional security, governance, monitoring, regulatory validation, and domain-specific testing.
-
----
-
-# 💡 Project Vision
-
-> **Credit assessment should provide more than a number.**
-
-CashFlow-Lens brings together:
+## Project structure
 
 ```text
-             RISK
-               │
-               ▼
-         EXPLANATION
-               │
-               ▼
-            EVIDENCE
-               │
-               ▼
-          PROVENANCE
-               │
-               ▼
-           FORECAST
-               │
-               ▼
-           FAIRNESS
-               │
-               ▼
-        STRESS TESTING
-               │
-               ▼
-      HUMAN DECISION SUPPORT
+cashflow-lens/
+├── backend/
+│   ├── api/main.py             # FastAPI app and endpoints
+│   ├── config/settings.yaml    # thresholds, data, evidence, fairness, stress settings
+│   ├── scripts/setup_demo.py   # train → evaluate → explain → fairness → forecast artifacts
+│   ├── src/                    # modules listed above
+│   ├── tests/                  # pytest suite
+│   ├── data/  artifacts/  models/
+│   ├── Dockerfile  docker-compose.yml
+│   └── requirements.txt
+└── frontend/
+    ├── src/
+    │   ├── pages/              # 8 views
+    │   ├── components/         # Card, KPICard, StatusBadge, ErrorAlert, LoadingSpinner
+    │   ├── layouts/            # sidebar + header shell
+    │   ├── services/           # api.ts, mockData.ts
+    │   └── types/api.ts
+    └── package.json
 ```
-
-The long-term vision is to explore how **explainable machine learning, alternative financial evidence, provenance, forecasting, fairness analysis, and financial stress testing** can work together to create richer and more transparent credit intelligence for MSMEs.
 
 ---
 
-<div align="center">
+## Implementation status
 
-# 💰 CashFlow-Lens
+| Area | Status | Notes |
+|---|---|---|
+| Model training, evaluation, SHAP | ✅ Built | Trains and evaluates three models and saves a SHAP explainer for LightGBM. The API expects a file named `primary_model.joblib`, which training does not save yet |
+| Fairness audit and mitigation | ✅ Built | Demo run audits a `gender` column on the demo dataset |
+| Cash-flow forecast | ✅ Built | The saved demo forecast is computed from sample transactions for one borrower |
+| Stress testing | ✅ Built | Shocks are applied by matching feature names (inflow, cost, outflow, debt service) |
+| Frontend (all pages) | ✅ Built | Works against the API or mock data |
+| Synthetic data generator, features, DB, preprocessing | 🧩 Module only | Complete and importable, but `setup_demo.py` does not call them yet (it looks for `engineer_features`, which doesn't exist in `features.py`) so the demo trains on its built-in fallback data |
+| Provenance engine | 🧩 Module only | Edge and graph builders are written but depend on `evidence_integrity.py` |
+| Evidence integrity engine | 🚧 Placeholder | `evidence_integrity.py` is an empty file. `/evidence` and `/provenance` return fixed sample JSON |
 
-### **PREDICT • VERIFY • TRACE • EXPLAIN • FORECAST • AUDIT • STRESS TEST**
 
-*Explainable credit intelligence for a more evidence-aware MSME lending workflow.*
 
-</div>
+---
+
