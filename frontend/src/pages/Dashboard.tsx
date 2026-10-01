@@ -18,7 +18,7 @@ export const Dashboard: React.FC = () => {
   }>({ risk: null, evidence: null, forecast: null });
 
   // Defaulting to DEMO-001 for the dashboard view
-  const borrowerId = "DEMO-001";
+ const borrowerId = localStorage.getItem('borrowerId') || "DEMO-001";
 
   const fetchData = async () => {
     try {

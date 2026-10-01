@@ -14,7 +14,7 @@ export const RiskAnalytics: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [risk, setRisk] = useState<RiskAnalysis | null>(null);
 
-  const borrowerId = "DEMO-001";
+  const borrowerId = localStorage.getItem('borrowerId') || "DEMO-001";
 
   const fetchRisk = async () => {
     try {

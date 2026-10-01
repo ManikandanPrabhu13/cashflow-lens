@@ -88,11 +88,18 @@ export const MainLayout: React.FC = () => {
               </div>
             )}
             
-            <select className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block w-full p-2.5 font-medium">
+           <select 
+              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block w-full p-2.5 font-medium"
+              value={localStorage.getItem('borrowerId') || 'DEMO-001'}
+              onChange={(e) => {
+                localStorage.setItem('borrowerId', e.target.value);
+                window.location.reload(); // Instantly reloads the page with the new user's data
+              }}
+            >
               <option value="DEMO-001">Borrower: DEMO-001</option>
               <option value="DEMO-002">Borrower: DEMO-002</option>
               <option value="DEMO-003">Borrower: DEMO-003</option>
-            </select>
+            </select> 
           </div>
         </header>
 

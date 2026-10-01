@@ -18,7 +18,7 @@ export const StressTesting: React.FC = () => {
     opex_shock: 0
   });
 
-  const borrowerId = "DEMO-001";
+  const borrowerId = localStorage.getItem('borrowerId') || "DEMO-001";
 
   const handleRunStressTest = async () => {
     try {
